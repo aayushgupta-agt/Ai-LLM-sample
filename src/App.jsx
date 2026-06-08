@@ -364,6 +364,7 @@ export default function App() {
   const [answer, setAnswer] = useState("");
   const [loading, setLoading] = useState(false);
   const inputRef = useRef(null);
+  const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3001/api/chat";
 
   useEffect(() => { inputRef.current?.focus(); }, []);
 
@@ -372,7 +373,7 @@ export default function App() {
     setLoading(true);
     setAnswer("");
     try {
-      const response = await fetch("http://localhost:3001/api/chat", {
+      const response = await fetch(`${API_URL}/api/chat`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ prompt }),
