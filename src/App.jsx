@@ -364,7 +364,9 @@ export default function App() {
   const [answer, setAnswer] = useState("");
   const [loading, setLoading] = useState(false);
   const inputRef = useRef(null);
-  const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3001/api/chat";
+  const API_URL =
+    import.meta.env.VITE_API_URL ||
+    "http://localhost:3001";
 
   useEffect(() => { inputRef.current?.focus(); }, []);
 
@@ -460,7 +462,9 @@ export default function App() {
                 </div>
               ) : (
                 <div className="md-body">
-                    <ReactMarkdown>{answer}</ReactMarkdown>
+                    <ReactMarkdown>
+                      {answer}
+                    </ReactMarkdown>
                 </div>
               )}
             </div>
