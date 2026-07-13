@@ -1,385 +1,41 @@
 import { useState, useRef, useEffect } from "react";
 import ReactMarkdown from "react-markdown";
-const styles = `
-  @import url('https://fonts.googleapis.com/css2?family=Sora:wght@300;400;600&family=JetBrains+Mono:wght@300;400&display=swap');
-
-  :root {
-    --bg:        #0d1117;
-    --surface:   #131920;
-    --border:    #1e2a35;
-    --border-hi: #2e4a60;
-    --text:      #cdd6e0;
-    --text-muted:#4a6070;
-    --text-dim:  #2a3a48;
-    --accent:    #4fa8d5;
-    --accent-lo: #4fa8d518;
-    --accent-md: #4fa8d540;
-    --glow:      #4fa8d508;
-  }
-
-  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-  body {
-    background: var(--bg);
-    color: var(--text);
-    min-height: 100vh;
-    font-family: 'Sora', sans-serif;
-    -webkit-font-smoothing: antialiased;
-  }
-
-  /* ── Grid overlay ─────────────────────────── */
-  .grid-bg {
-    position: fixed;
-    inset: 0;
-    z-index: 0;
-    pointer-events: none;
-    background-image:
-      linear-gradient(var(--border) 1px, transparent 1px),
-      linear-gradient(90deg, var(--border) 1px, transparent 1px);
-    background-size: 48px 48px;
-    mask-image: radial-gradient(ellipse 80% 60% at 50% 0%, black 20%, transparent 80%);
-    opacity: 0.35;
-  }
-
-  /* ── Ambient glow ─────────────────────────── */
-  .glow-top {
-    position: fixed;
-    top: -120px;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 600px;
-    height: 400px;
-    border-radius: 50%;
-    background: radial-gradient(ellipse, #4fa8d514 0%, #1a6a9a0a 40%, transparent 70%);
-    pointer-events: none;
-    z-index: 0;
-    animation: pulse 6s ease-in-out infinite;
-  }
-
-  @keyframes pulse {
-    0%, 100% { opacity: 0.7; transform: translateX(-50%) scaleX(1); }
-    50%       { opacity: 1;   transform: translateX(-50%) scaleX(1.1); }
-  }
-
-  /* ── Shell ────────────────────────────────── */
-  .app-shell {
-    min-height: 100vh;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    padding: 0 24px 100px;
-    position: relative;
-    z-index: 1;
-  }
-
-  /* ── Header ───────────────────────────────── */
-  .header {
-    width: 100%;
-    max-width: 720px;
-    padding: 80px 0 52px;
-    text-align: center;
-    animation: riseIn 0.8s cubic-bezier(0.16,1,0.3,1) both;
-  }
-
-  @keyframes riseIn {
-    from { opacity: 0; transform: translateY(24px); }
-    to   { opacity: 1; transform: translateY(0); }
-  }
-
-  .header-badge {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    font-size: 10.5px;
-    font-weight: 400;
-    letter-spacing: 0.16em;
-    text-transform: uppercase;
-    color: var(--accent);
-    margin-bottom: 24px;
-  }
-
-  .badge-dot {
-    width: 6px;
-    height: 6px;
-    border-radius: 50%;
-    background: var(--accent);
-    box-shadow: 0 0 8px var(--accent);
-    animation: blink 2.4s ease-in-out infinite;
-  }
-
-  @keyframes blink {
-    0%, 100% { opacity: 1; }
-    50%       { opacity: 0.3; }
-  }
-
-  .header-title {
-    font-family: 'Sora', sans-serif;
-    font-size: clamp(38px, 6vw, 64px);
-    font-weight: 600;
-    line-height: 1.08;
-    letter-spacing: -0.03em;
-    color: #e8f0f7;
-  }
-
-  .header-title .dim { color: var(--text-muted); font-weight: 300; }
-
-  .header-desc {
-    margin-top: 16px;
-    font-size: 13px;
-    font-weight: 300;
-    color: var(--text-muted);
-    letter-spacing: 0.01em;
-    line-height: 1.6;
-  }
-
-  /* ── Search ───────────────────────────────── */
-  .search-wrap {
-    width: 100%;
-    max-width: 720px;
-    animation: riseIn 0.8s 0.12s cubic-bezier(0.16,1,0.3,1) both;
-  }
-
-  .search-field {
-    display: flex;
-    align-items: stretch;
-    border: 1px solid var(--border);
-    background: var(--surface);
-    border-radius: 10px;
-    overflow: hidden;
-    transition: border-color 0.25s, box-shadow 0.25s;
-  }
-
-  .search-field:focus-within {
-    border-color: var(--border-hi);
-    box-shadow: 0 0 0 3px var(--accent-lo), 0 12px 48px #00000055;
-  }
-
-  .search-icon {
-    display: flex;
-    align-items: center;
-    padding: 0 16px 0 20px;
-    color: var(--text-dim);
-    flex-shrink: 0;
-  }
-
-  .search-icon svg { display: block; }
-
-  .search-input {
-    flex: 1;
-    background: transparent;
-    border: none;
-    outline: none;
-    padding: 18px 12px 18px 0;
-    font-family: 'Sora', sans-serif;
-    font-size: 14.5px;
-    font-weight: 300;
-    color: var(--text);
-    letter-spacing: 0.01em;
-    caret-color: var(--accent);
-  }
-
-  .search-input::placeholder { color: var(--text-dim); }
-
-  .search-btn {
-    flex-shrink: 0;
-    border: none;
-    border-left: 1px solid var(--border);
-    background: transparent;
-    padding: 0 24px;
-    cursor: pointer;
-    font-family: 'Sora', sans-serif;
-    font-size: 12.5px;
-    font-weight: 600;
-    letter-spacing: 0.06em;
-    color: var(--accent);
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    transition: background 0.2s;
-    white-space: nowrap;
-  }
-
-  .search-btn:hover:not(:disabled) { background: var(--accent-lo); }
-  .search-btn:disabled { color: var(--text-dim); cursor: not-allowed; }
-
-  .arrow { transition: transform 0.2s; }
-  .search-btn:hover:not(:disabled) .arrow { transform: translateX(3px); }
-
-  .hint {
-    margin-top: 10px;
-    font-size: 11px;
-    color: var(--text-dim);
-    letter-spacing: 0.04em;
-    display: flex;
-    align-items: center;
-    gap: 5px;
-  }
-
-  .kbd {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 10px;
-    padding: 2px 7px;
-    border: 1px solid var(--border);
-    border-radius: 4px;
-    color: var(--text-muted);
-    background: var(--surface);
-  }
-
-  /* ── Divider ──────────────────────────────── */
-  .divider {
-    width: 100%;
-    max-width: 720px;
-    margin-top: 44px;
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    opacity: 0;
-    transition: opacity 0.4s ease;
-  }
-
-  .divider.visible { opacity: 1; }
-  .div-line { flex: 1; height: 1px; background: var(--border); }
-  .div-label {
-    font-size: 10px;
-    letter-spacing: 0.18em;
-    text-transform: uppercase;
-    color: var(--text-dim);
-    font-family: 'JetBrains Mono', monospace;
-  }
-
-  /* ── Answer card ──────────────────────────── */
-  .answer-card {
-    width: 100%;
-    max-width: 720px;
-    margin-top: 24px;
-    animation: riseIn 0.5s ease both;
-  }
-
-  .card-inner {
-    border: 1px solid var(--border);
-    background: var(--surface);
-    border-radius: 10px;
-    padding: 28px 32px 32px;
-    position: relative;
-    overflow: hidden;
-  }
-
-  .card-inner::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    border-radius: 10px;
-    background: linear-gradient(135deg, var(--accent-lo) 0%, transparent 50%);
-    pointer-events: none;
-  }
-
-  .card-header {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    margin-bottom: 20px;
-  }
-
-  .card-tag {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 10px;
-    letter-spacing: 0.16em;
-    text-transform: uppercase;
-    color: var(--accent);
-    opacity: 0.7;
-  }
-
-  .card-line { flex: 1; height: 1px; background: var(--border); }
-
-  /* Markdown styles */
-  .md-body { color: var(--text); font-size: 14px; font-weight: 300; line-height: 1.8; letter-spacing: 0.01em; }
-  .md-body p { margin-bottom: 14px; }
-  .md-body p:last-child { margin-bottom: 0; }
-  .md-body strong { color: #e8f0f7; font-weight: 600; }
-  .md-body em { color: #9abfd4; }
-  .md-body code {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 12.5px;
-    background: #0d1117;
-    color: #7dd3f0;
-    padding: 2px 7px;
-    border-radius: 4px;
-    border: 1px solid var(--border);
-  }
-  .md-body pre {
-    background: #0d1117;
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    padding: 18px 20px;
-    overflow-x: auto;
-    margin: 16px 0;
-  }
-  .md-body pre code { background: none; border: none; padding: 0; color: #9abfd4; }
-  .md-body ul, .md-body ol { padding-left: 20px; margin-bottom: 14px; }
-  .md-body li { margin-bottom: 6px; }
-  .md-body h1, .md-body h2, .md-body h3 {
-    color: #e8f0f7;
-    font-weight: 600;
-    letter-spacing: -0.01em;
-    margin: 20px 0 10px;
-  }
-  .md-body h1 { font-size: 20px; }
-  .md-body h2 { font-size: 17px; }
-  .md-body h3 { font-size: 15px; }
-  .md-body blockquote {
-    border-left: 2px solid var(--accent-md);
-    padding-left: 16px;
-    color: var(--text-muted);
-    margin: 14px 0;
-  }
-
-  /* ── Skeleton ─────────────────────────────── */
-  .skeleton { display: flex; flex-direction: column; gap: 11px; }
-  .skel {
-    height: 13px;
-    border-radius: 4px;
-    background: linear-gradient(90deg, var(--border) 25%, #1e2e3d 50%, var(--border) 75%);
-    background-size: 200% 100%;
-    animation: shimmer 1.6s infinite;
-  }
-  @keyframes shimmer {
-    from { background-position: 200% 0; }
-    to   { background-position: -200% 0; }
-  }
-
-  /* ── Spinner ──────────────────────────────── */
-  .spinner {
-    width: 13px; height: 13px;
-    border: 1.5px solid var(--border-hi);
-    border-top-color: var(--accent);
-    border-radius: 50%;
-    animation: spin 0.65s linear infinite;
-  }
-  @keyframes spin { to { transform: rotate(360deg); } }
-`;
+const SUGGESTED = [
+  "How does transformer attention work?",
+  "What is the difference between RAG and fine-tuning?",
+  "Explain quantum entanglement simply",
+];
 
 export default function App() {
   const [prompt, setPrompt] = useState("");
   const [answer, setAnswer] = useState("");
   const [loading, setLoading] = useState(false);
+  const [asked, setAsked] = useState("");
+  const [model, setModel] = useState("Nvidia");
   const inputRef = useRef(null);
-  const API_URL =
-    import.meta.env.VITE_API_URL ||
-    "http://localhost:3001";
 
-  useEffect(() => { inputRef.current?.focus(); }, []);
+  const API_URL =  "http://localhost:3001";
 
-  async function searchAI() {
-    if (!prompt.trim()) return;
+  useEffect(() => {
+    inputRef.current?.focus();
+  }, []);
+
+  async function searchAI(text) {
+    const query = text ?? prompt;
+    if (!query.trim()) return;
+    setAsked(query);
     setLoading(true);
     setAnswer("");
     try {
       const response = await fetch(`${API_URL}/api/chat`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt }),
+        body: JSON.stringify({ prompt: query }),
       });
       const data = await response.json();
+      const {model} = data;
+      const name = model.split("/")[0];
+      setModel(name);
       setAnswer(data.answer);
     } catch {
       setAnswer("Something went wrong. Please try again.");
@@ -387,90 +43,188 @@ export default function App() {
     setLoading(false);
   }
 
+  function handleSuggestion(s) {
+    setPrompt(s);
+    searchAI(s);
+  }
+
   const showResult = loading || answer;
 
   return (
-    <>
-      <style>{styles}</style>
-      <div className="grid-bg" />
-      <div className="glow-top" />
+    <div className="min-h-screen bg-zinc-950 text-zinc-200 flex flex-col items-center px-5 pb-24">
 
-      <div className="app-shell">
+      {/* ── Subtle top glow ── */}
+      <div
+        className="pointer-events-none fixed top-0 left-1/2 -translate-x-1/2 w-[700px] h-[300px] opacity-30"
+        style={{
+          background: "radial-gradient(ellipse 60% 100% at 50% 0%, #3b82f620, transparent)",
+        }}
+        aria-hidden
+      />
 
-        <header className="header">
-          <div className="header-badge">
-            <span className="badge-dot" />
-            LLM Interface · Active
+      {/* ── Header ── */}
+      <header className="w-full max-w-2xl pt-20 pb-12 text-center">
+        <span className="inline-flex items-center gap-2 text-[10px] tracking-[0.2em] uppercase text-blue-400 font-medium mb-6">
+          <span className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse" />
+          AI · Ready
+        </span>
+
+        <h1 className="text-4xl sm:text-5xl font-semibold tracking-tight text-zinc-100 leading-[1.1]">
+          Ask anything
+        </h1>
+        <p className="mt-3 text-sm text-zinc-500 font-normal leading-relaxed max-w-sm mx-auto">
+          A direct line to the model — type a question and get a clear, structured answer.
+        </p>
+      </header>
+
+      {/* ── Search bar ── */}
+      <div className="w-full max-w-2xl">
+        <div className="flex items-stretch rounded-xl border border-zinc-800 bg-zinc-900 ring-0 transition-all duration-200 focus-within:border-zinc-600 focus-within:ring-2 focus-within:ring-blue-500/10">
+          {/* Icon */}
+          <div className="flex items-center pl-4 pr-3 text-zinc-600 flex-shrink-0">
+            <svg width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden>
+              <circle cx="6.5" cy="6.5" r="4.5" stroke="currentColor" strokeWidth="1.5" />
+              <path d="M10 10L14 14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+            </svg>
           </div>
-          <h1 className="header-title">
-            What do you<br />
-            <span className="dim">want to know?</span>
-          </h1>
-          <p className="header-desc">
-            Ask any question. The model will reason through it and respond with a clear, structured answer.
+
+          {/* Input */}
+          <input
+            ref={inputRef}
+            type="text"
+            value={prompt}
+            onChange={(e) => setPrompt(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && searchAI()}
+            placeholder="Ask a question…"
+            className="flex-1 bg-transparent border-none outline-none py-4 pr-3 text-sm text-zinc-200 placeholder-zinc-600 font-light"
+          />
+
+          {/* Button */}
+          <button
+            onClick={() => searchAI()}
+            disabled={loading || !prompt.trim()}
+            className="flex-shrink-0 flex items-center gap-1.5 px-5 border-l border-zinc-800 text-xs font-semibold tracking-wide text-blue-400 transition-all duration-150 hover:bg-blue-500/5 disabled:text-zinc-600 disabled:cursor-not-allowed rounded-r-xl"
+          >
+            {loading ? (
+              <span className="w-3 h-3 rounded-full border border-zinc-600 border-t-blue-400 animate-spin block" />
+            ) : (
+              <>
+                Ask
+                <span className="text-zinc-600 group-hover:translate-x-0.5 transition-transform">→</span>
+              </>
+            )}
+          </button>
+        </div>
+
+        {/* Keyboard hint */}
+        <p className="mt-2.5 text-[11px] text-zinc-600 flex items-center gap-1.5 pl-1">
+          Press
+          <kbd className="font-mono text-[10px] px-1.5 py-0.5 border border-zinc-800 rounded text-zinc-500 bg-zinc-900">
+            Enter
+          </kbd>
+          to send
+        </p>
+      </div>
+
+      {/* ── Suggestions (shown before any search) ── */}
+      {!showResult && (
+        <div className="w-full max-w-2xl mt-8">
+          <p className="text-[11px] text-zinc-600 tracking-widest uppercase mb-3 pl-0.5">
+            Try asking
           </p>
-        </header>
+          <div className="flex flex-col gap-2">
+            {SUGGESTED.map((s) => (
+              <button
+                key={s}
+                onClick={() => handleSuggestion(s)}
+                className="text-left text-sm text-zinc-400 bg-zinc-900/60 border border-zinc-800/80 rounded-lg px-4 py-3 hover:border-zinc-700 hover:text-zinc-300 hover:bg-zinc-900 transition-all duration-150"
+              >
+                {s}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
-        <div className="search-wrap">
-          <div className="search-field">
-            <span className="search-icon">
-              <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                <circle cx="6.5" cy="6.5" r="4.5" stroke="currentColor" strokeWidth="1.4" />
-                <path d="M10 10L14 14" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
-              </svg>
+      {/* ── Answer area ── */}
+      {showResult && (
+        <div className="w-full max-w-2xl mt-8 animate-[fadeUp_0.35s_ease_both]">
+          {/* Divider */}
+          <div className="flex items-center gap-3 mb-6">
+            <div className="flex-1 h-px bg-zinc-800" />
+            <span className="text-[10px] font-mono text-zinc-600 tracking-widest uppercase">
+              response
             </span>
-            <input
-              ref={inputRef}
-              className="search-input"
-              type="text"
-              value={prompt}
-              onChange={(e) => setPrompt(e.target.value)}
-              placeholder="Ask anything..."
-              onKeyDown={(e) => e.key === "Enter" && searchAI()}
-            />
-            <button className="search-btn" onClick={searchAI} disabled={loading}>
-              {loading
-                ? <span className="spinner" />
-                : <><span>Ask</span><span className="arrow">→</span></>
-              }
-            </button>
+            <div className="flex-1 h-px bg-zinc-800" />
           </div>
-          <div className="hint">
-            Press <span className="kbd">Enter</span> to send
-          </div>
-        </div>
 
-        <div className={`divider ${showResult ? "visible" : ""}`}>
-          <div className="div-line" />
-          <span className="div-label">response</span>
-          <div className="div-line" />
-        </div>
+          {/* Question echo */}
+          {asked && (
+            <p className="text-xs text-zinc-500 mb-4 pl-1">
+              <span className="text-zinc-600">Q:</span>{" "}
+              <span className="text-zinc-400">{asked}</span>
+            </p>
+          )}
 
-        {showResult && (
-          <div className="answer-card">
-            <div className="card-inner">
-              <div className="card-header">
-                <span className="card-tag">model · output</span>
-                <div className="card-line" />
-              </div>
+          {/* Card */}
+          <div className="rounded-xl border border-zinc-800 bg-zinc-900/80 overflow-hidden">
+            {/* Card top bar */}
+            <div className="flex items-center gap-2 px-5 py-3 border-b border-zinc-800/70">
+              <div className="w-2 h-2 rounded-full bg-blue-500/60" />
+              <span className="text-[11px] font-mono text-zinc-600 tracking-wider">
+                {model ? `Model: ${model.toUpperCase()} · ` : ""}
+              </span>
+            </div>
+
+            {/* Body */}
+            <div className="px-5 py-5">
               {loading ? (
-                <div className="skeleton">
-                  {[92, 100, 78, 88, 55].map((w, i) => (
-                    <div key={i} className="skel" style={{ width: `${w}%`, animationDelay: `${i * 0.08}s` }} />
+                <div className="space-y-3">
+                  {[95, 80, 90, 65, 50].map((w, i) => (
+                    <div
+                      key={i}
+                      className="h-3 rounded-full bg-zinc-800 animate-pulse"
+                      style={{
+                        width: `${w}%`,
+                        animationDelay: `${i * 100}ms`,
+                      }}
+                    />
                   ))}
                 </div>
               ) : (
-                <div className="md-body">
-                    <ReactMarkdown>
-                      {answer}
-                    </ReactMarkdown>
+                <div className="prose prose-sm prose-invert max-w-none
+                  prose-p:text-zinc-300 prose-p:leading-relaxed prose-p:font-light
+                  prose-strong:text-zinc-100 prose-strong:font-semibold
+                  prose-em:text-blue-300/80
+                  prose-code:text-blue-300 prose-code:bg-zinc-950 prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded prose-code:text-xs prose-code:border prose-code:border-zinc-800 prose-code:font-mono prose-code:before:content-none prose-code:after:content-none
+                  prose-pre:bg-zinc-950 prose-pre:border prose-pre:border-zinc-800 prose-pre:rounded-lg
+                  prose-headings:text-zinc-100 prose-headings:font-semibold
+                  prose-blockquote:border-l-blue-500/40 prose-blockquote:text-zinc-400
+                  prose-li:text-zinc-300 prose-li:leading-relaxed prose-li:font-light
+                  prose-ul:pl-5 prose-ol:pl-5
+                ">
+                  <ReactMarkdown>{answer}</ReactMarkdown>
                 </div>
               )}
             </div>
           </div>
-        )}
 
-      </div>
-    </>
+          {/* Follow-up hint */}
+          {answer && !loading && (
+            <p className="mt-4 text-xs text-zinc-600 pl-1">
+              Type another question above to continue.
+            </p>
+          )}
+        </div>
+      )}
+
+      {/* ── Keyframe for answer fade-up ── */}
+      <style>{`
+        @keyframes fadeUp {
+          from { opacity: 0; transform: translateY(10px); }
+          to   { opacity: 1; transform: translateY(0); }
+        }
+      `}</style>
+    </div>
   );
 }
