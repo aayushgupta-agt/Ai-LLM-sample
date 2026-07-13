@@ -26,6 +26,12 @@ export default function App() {
     setAsked(query);
     setLoading(true);
     setAnswer("");
+    setError("");
+    setUsedModel(null);
+    setResponseTime(null);
+
+    const startTime = performance.now();
+
     try {
       const response = await fetch(`${API_URL}/api/chat`, {
         method: "POST",
@@ -38,8 +44,11 @@ export default function App() {
       setModel(name);
       setAnswer(data.answer);
     } catch {
-      setAnswer("Something went wrong. Please try again.");
+      const elapsed = ((performance.now() - startTime) / 1000).toFixed(2);
+      setResponseTime(elapsed);
+      setError("Network error — is the server running?");
     }
+
     setLoading(false);
   }
 
@@ -48,7 +57,12 @@ export default function App() {
     searchAI(s);
   }
 
-  const showResult = loading || answer;
+  const currentModelLabel =
+    MODELS.find((m) => m.model === (usedModel || selectedModel))?.name ||
+    usedModel ||
+    selectedModel;
+
+  const showResult = loading || answer || error;
 
   return (
     <div className="min-h-screen bg-zinc-950 text-zinc-200 flex flex-col items-center px-5 pb-24">
